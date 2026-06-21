@@ -69,5 +69,6 @@ This project was developed by **Team TigerBalm** for **Hack4Her 2026**.
 * **iamwangshuang** - Co-developer (www.linkedin.com/in/iamshuangwang)
 * **Cecilia0629sy** - Co-developer (Catherinesawyer0807@gmail.com)
 * **Sijie Zeng** - Co-developer (stella980311@gmail.com)
+* **Tongshu Liu** - Co-developer (https://linkedin.com/in/tongshu-liu)
 
 ---
