@@ -60,8 +60,14 @@ Two fully decoupled signals: what you collect shapes the map; what you order sha
 
 React · Vite · Tailwind CSS · Framer Motion · 100% mock data (no backend)
 
-## 👩‍💻 Contributors
 
-* **iamwangshuang** - Co-developer
-* **Sijie Zeng** - Co-developer 
 
+## 👥 Team
+
+This project was developed by **Team TigerBalm** for **Hack4Her 2026**.
+
+* **iamwangshuang** - Co-developer (www.linkedin.com/in/iamshuangwang)
+* **Cecilia0629sy** - Co-developer (Catherinesawyer0807@gmail.com)
+* **Sijie Zeng** - Co-developer (stella980311@gmail.com)
+
+---
