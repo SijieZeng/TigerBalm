@@ -3,8 +3,9 @@ import { AnimatePresence, motion } from 'framer-motion'
 import { useGame } from '../state/gameStore.jsx'
 import { ingredientById } from '../data/mockData.js'
 import { rankCandidateDishes } from '../data/engine.js'
+import { asset } from '../asset.js'
 
-const POT_IMAGE = '/images/ui/pot.png'
+const POT_IMAGE = asset('/images/ui/pot.png')
 
 /** Mockup 4 — Ingredient Kitchen. Tap an ingredient to drop it in the pot,
  *  then Make. Cooking + selection live on this one page. */

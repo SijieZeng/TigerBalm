@@ -11,14 +11,14 @@
 ## 📲 Try it on your phone
 
 <p align="center">
-  <a href="https://hill-flexible-organizations-bike.trycloudflare.com"><b>https://hill-flexible-organizations-bike.trycloudflare.com</b></a>
+  <a href="https://sijiezeng.github.io/TigerBalm/"><b>https://sijiezeng.github.io/TigerBalm/</b></a>
 </p>
 
 <p align="center">
   <img src="qr_webapp.png" width="190" alt="Scan to try" />
 </p>
 
-<p align="center"><sub>Live demo link (temporary). In WeChat/QQ, tap ··· → <b>Open in browser</b> for the best experience.</sub></p>
+<p align="center"><sub>In WeChat/QQ, tap ··· → <b>Open in browser</b> for the best experience.</sub></p>
 
 ---
 

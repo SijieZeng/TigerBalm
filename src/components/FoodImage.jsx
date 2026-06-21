@@ -1,4 +1,5 @@
 import { useState } from 'react'
+import { asset } from '../asset.js'
 
 /**
  * Renders a real image from /public/images when present, otherwise falls back
@@ -9,7 +10,7 @@ export default function FoodImage({ src, emoji, alt = '', className = '', rounde
   const [failed, setFailed] = useState(!src)
 
   if (src && !failed) {
-    return <img src={src} alt={alt} onError={() => setFailed(true)} className={`object-cover ${rounded} ${className}`} />
+    return <img src={asset(src)} alt={alt} onError={() => setFailed(true)} className={`object-cover ${rounded} ${className}`} />
   }
   return (
     <div

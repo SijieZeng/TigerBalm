@@ -1,5 +1,6 @@
 import { useGame } from '../state/gameStore.jsx'
 import { useFitSize } from '../useFitSize.js'
+import { asset } from '../asset.js'
 
 /**
  * Home = the baked iPhone 15 mockup image (device fills the canvas now — the
@@ -19,7 +20,7 @@ export default function HomeScreen() {
       {/* explicit px size from JS (no aspect-ratio/dvh reliance) */}
       <div className="relative" style={{ width: w, height: h }}>
         <img
-          src="/images/ui/home_mockup.png"
+          src={asset('/images/ui/home_mockup.png')}
           alt="Uber Eats — Today's Hunger Hunt"
           draggable="false"
           className="h-full w-full select-none"
