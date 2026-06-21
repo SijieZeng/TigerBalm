@@ -1,4 +1,5 @@
 import { useGame } from '../state/gameStore.jsx'
+import { useFitSize } from '../useFitSize.js'
 
 /**
  * Home = the baked iPhone 15 mockup image (device fills the canvas now — the
@@ -12,10 +13,11 @@ const HOTSPOT = { left: '8%', top: '57%', width: '84%', height: '18%' }
 
 export default function HomeScreen() {
   const { dispatch } = useGame()
+  const { w, h } = useFitSize(1412 / 2830, 8, 8)
   return (
-    <div className="flex h-dvh w-screen items-center justify-center overflow-hidden bg-[#ececef]">
-      {/* sized to fit BOTH visible height (dvh) and width — mobile-safe */}
-      <div className="relative aspect-[1412/2830] h-[min(96dvh,calc(94vw*2830/1412))]">
+    <div className="fixed inset-0 flex items-center justify-center overflow-hidden bg-[#ececef]">
+      {/* explicit px size from JS (no aspect-ratio/dvh reliance) */}
+      <div className="relative" style={{ width: w, height: h }}>
         <img
           src="/images/ui/home_mockup.png"
           alt="Uber Eats — Today's Hunger Hunt"

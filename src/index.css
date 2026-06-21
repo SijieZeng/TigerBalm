@@ -4,7 +4,11 @@
   font-family: system-ui, -apple-system, "Segoe UI", Roboto, sans-serif;
 }
 
-body {
+html, body {
   margin: 0;
   background: #111;
+  /* lock the page; the app sizes itself in JS and fills the viewport */
+  height: 100%;
+  overflow: hidden;
+  overscroll-behavior: none;
 }

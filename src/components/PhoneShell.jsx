@@ -5,9 +5,14 @@
  *   titanium rim  ->  black bezel  ->  screen (393×852 pt ratio ≈ 2.168:1)
  *   + Dynamic Island, side buttons (action / volume / power), soft drop shadow.
  */
+import { useFitSize } from '../useFitSize.js'
+
 export default function PhoneShell({ children }) {
+  // Size the screen in JS px (reserves room for bezel+rim+margin). Reliable in
+  // old in-app webviews that don't support aspect-ratio / dvh.
+  const { w, h } = useFitSize(393 / 852, 50, 50)
   return (
-    <div className="flex min-h-dvh items-center justify-center bg-[#ececef] p-2 sm:p-8">
+    <div className="fixed inset-0 flex items-center justify-center bg-[#ececef]">
       {/* titanium rim */}
       <div className="relative rounded-[60px] bg-gradient-to-br from-[#e6e6ea] via-[#aeaeb4] to-[#9a9aa1] p-[4px] shadow-[0_40px_80px_-20px_rgba(0,0,0,0.45),0_8px_24px_rgba(0,0,0,0.2)]">
         {/* side buttons (on the metal edge) */}
@@ -18,9 +23,8 @@ export default function PhoneShell({ children }) {
 
         {/* black bezel */}
         <div className="rounded-[56px] bg-black p-[13px]">
-          {/* screen — sized to fit BOTH the visible height (dvh, mobile-safe)
-              and the width, so the whole device fits any phone/desktop */}
-          <div className="relative aspect-[393/852] h-[min(86dvh,calc(86vw*852/393))] w-auto max-w-full overflow-hidden rounded-[45px] bg-neutral-50">
+          {/* screen — explicit px size from JS (no aspect-ratio/dvh reliance) */}
+          <div className="relative overflow-hidden rounded-[45px] bg-neutral-50" style={{ width: w, height: h }}>
             {/* Dynamic Island */}
             <div className="absolute left-1/2 top-[11px] z-50 flex h-[32px] w-[118px] -translate-x-1/2 items-center justify-end rounded-full bg-black pr-2.5">
               <span className="h-2 w-2 rounded-full bg-[#1c1c22] ring-1 ring-[#2c2c34]" />
