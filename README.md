@@ -59,3 +59,7 @@ Two fully decoupled signals: what you collect shapes the map; what you order sha
 ## 🛠️ Built with
 
 React · Vite · Tailwind CSS · Framer Motion · 100% mock data (no backend)
+
+## 👩‍💻 Contributors
+
+* **iamwangshuang** - Co-developer
