@@ -1,14 +1,16 @@
 import { createContext, useContext, useReducer, useMemo } from 'react'
 import { users as seedUsers, config } from '../data/mockData.js'
-import { rollDrops, capacityFor, canCollectToday, getDiscountForCount } from '../data/engine.js'
+import { rollDrops, capacityFor, totalSlotsFor, getDiscountForCount } from '../data/engine.js'
 
 /**
  * Central game store: Context + reducer.
  *
- * We keep a MUTABLE clone of the seed users so that gameplay (collect / discard)
- * mutates each user's ingredientTrack — which is what makes "the system learns
- * from me" visibly true when we re-roll map drops. The cuisine track (orders /
- * favorites) stays untouched: it only feeds candidate ranking.
+ * Single returning user. We keep a MUTABLE clone so gameplay (collect / discard)
+ * mutates the ingredient track — the hidden personalization signal. The cuisine
+ * track (orders / favorites) stays untouched and only feeds cooked-candidate
+ * ranking.
+ *
+ * Screens: home | map | kitchen | cooked | coupon | restaurant
  */
 
 const GameContext = createContext(null)
@@ -17,42 +19,35 @@ function clone(obj) {
   return typeof structuredClone === 'function' ? structuredClone(obj) : JSON.parse(JSON.stringify(obj))
 }
 
-function freshUsers() {
-  return clone(seedUsers)
-}
-
-// Hand-picked scatter positions (% of map) so pins never overlap the HUD.
+// Scatter positions (% of map) tuned to sit inside the visible map area.
 const PIN_SPOTS = [
-  { x: 22, y: 30 }, { x: 64, y: 22 }, { x: 40, y: 46 },
-  { x: 76, y: 52 }, { x: 18, y: 62 }, { x: 56, y: 70 },
-  { x: 34, y: 78 }, { x: 80, y: 78 },
+  { x: 50, y: 30 }, { x: 74, y: 38 }, { x: 28, y: 42 },
+  { x: 72, y: 60 }, { x: 26, y: 64 }, { x: 52, y: 70 },
+  { x: 40, y: 84 }, { x: 64, y: 82 },
 ]
 
-// Decorate engine drops with a stable unique id + a map position.
 function decorateDrops(drops) {
   return drops.map((d, i) => ({ ...d, _uid: `${d.id}-${i}`, pos: PIN_SPOTS[i % PIN_SPOTS.length] }))
 }
 
-function makeDrops(user, n = 6) {
+function makeDrops(user, n = 7) {
   return decorateDrops(rollDrops(user, n))
 }
 
 function activeUser(state) {
-  return state.users.find((u) => u.id === state.activeUserId)
+  return state.users[0]
 }
 
 function initState() {
-  const users = freshUsers()
-  const first = users.find((u) => u.id === 'returning') ?? users[0]
+  const users = clone(seedUsers)
+  const user = users[0]
   return {
     users,
-    activeUserId: first.id,
-    screen: 'home', // home | map | backpack | synth | coupon
-    mapDrops: makeDrops(first, 6), // [{...ingredient, weight, _uid, pos}]
-    synthSelection: [], // ingredient ids the user committed at synthesis
-    coupon: null, // { dish, restaurant, tier }
-    dayCount: 1,
-    showWeights: false,
+    screen: 'home',
+    mapDrops: makeDrops(user, 7),
+    potSelection: [], // ingredient ids dropped into the pot for cooking
+    cooked: [], // the 3 candidate dishes produced by "Make"
+    coupon: null, // { dish, restaurant, tier, ingredientsUsed }
   }
 }
 
@@ -61,123 +56,102 @@ function reducer(state, action) {
     case 'SET_SCREEN':
       return { ...state, screen: action.screen }
 
-    case 'SWITCH_USER': {
-      const user = state.users.find((u) => u.id === action.userId)
-      return {
-        ...state,
-        activeUserId: action.userId,
-        mapDrops: makeDrops(user, 6),
-        synthSelection: [],
-        coupon: null,
-        screen: 'map',
-      }
-    }
-
-    case 'REROLL_DROPS': {
-      return { ...state, mapDrops: makeDrops(activeUser(state), 6) }
-    }
+    case 'REROLL_DROPS':
+      return { ...state, mapDrops: makeDrops(activeUser(state), 7) }
 
     case 'COLLECT': {
-      const users = state.users.map((u) => {
-        if (u.id !== state.activeUserId) return u
-        const cap = capacityFor(u)
-        if (!canCollectToday(u)) return u
-        if (u.backpack.length >= cap) return u // full handled by REPLACE flow
+      // Unlimited daily picks; only the kitchen capacity gates a collect.
+      const users = state.users.map((u, i) => {
+        if (i !== 0) return u
+        if (u.backpack.length >= capacityFor(u)) return u // full -> handled by REPLACE
         return {
           ...u,
           backpack: [...u.backpack, action.ingredientId],
-          dailyCollected: u.dailyCollected + 1,
           ingredientTrack: bump(u.ingredientTrack, 'collected', action.ingredientId),
         }
       })
-      // remove the collected pin from the map
-      const mapDrops = state.mapDrops.filter((d) => d.id !== action.ingredientId || d._uid !== action._uid)
+      const mapDrops = state.mapDrops.filter((d) => d._uid !== action._uid)
       return { ...state, users, mapDrops }
     }
 
     case 'REPLACE_AND_COLLECT': {
-      // Backpack full: discard `removeId` (negative signal) and add the new one.
-      const users = state.users.map((u) => {
-        if (u.id !== state.activeUserId) return u
-        if (!canCollectToday(u)) return u
+      // Kitchen full: discard `removeId` (negative signal) and add the new one.
+      const users = state.users.map((u, i) => {
+        if (i !== 0) return u
         const idx = u.backpack.indexOf(action.removeId)
         const backpack = idx >= 0 ? [...u.backpack.slice(0, idx), ...u.backpack.slice(idx + 1)] : [...u.backpack]
         backpack.push(action.ingredientId)
         let track = bump(u.ingredientTrack, 'discarded', action.removeId)
         track = bump(track, 'collected', action.ingredientId)
-        return { ...u, backpack, dailyCollected: u.dailyCollected + 1, ingredientTrack: track }
+        return { ...u, backpack, ingredientTrack: track }
       })
-      const mapDrops = state.mapDrops.filter((d) => !(d.id === action.ingredientId && d._uid === action._uid))
+      const mapDrops = state.mapDrops.filter((d) => d._uid !== action._uid)
       return { ...state, users, mapDrops }
     }
 
-    case 'DISCARD_FROM_MAP': {
-      // "Not interested" on a pin: negative signal, pin leaves map. No daily cost.
-      const users = state.users.map((u) =>
-        u.id === state.activeUserId
-          ? { ...u, ingredientTrack: bump(u.ingredientTrack, 'discarded', action.ingredientId) }
-          : u
+    case 'PASS_INGREDIENT': {
+      // "Pass" on the select sheet: negative signal, pin leaves the map.
+      const users = state.users.map((u, i) =>
+        i === 0 ? { ...u, ingredientTrack: bump(u.ingredientTrack, 'discarded', action.ingredientId) } : u
       )
       const mapDrops = state.mapDrops.filter((d) => d._uid !== action._uid)
       return { ...state, users, mapDrops }
     }
 
-    case 'DISCARD_FROM_BACKPACK': {
-      const users = state.users.map((u) => {
-        if (u.id !== state.activeUserId) return u
-        const idx = u.backpack.indexOf(action.ingredientId)
-        if (idx < 0) return u
-        const backpack = [...u.backpack.slice(0, idx), ...u.backpack.slice(idx + 1)]
-        return { ...u, backpack, ingredientTrack: bump(u.ingredientTrack, 'discarded', action.ingredientId) }
+    case 'REMOVE_FROM_KITCHEN': {
+      // Remove the specific backpack slot (index) — indices shift, so reset pot.
+      const users = state.users.map((u, i) => {
+        if (i !== 0) return u
+        const id = u.backpack[action.index]
+        if (id == null) return u
+        const backpack = u.backpack.filter((_, k) => k !== action.index)
+        return { ...u, backpack, ingredientTrack: bump(u.ingredientTrack, 'discarded', id) }
       })
-      return { ...state, users }
+      return { ...state, users, potSelection: [] }
     }
 
-    case 'NEXT_DAY': {
-      const users = state.users.map((u) =>
-        u.id === state.activeUserId ? { ...u, dailyCollected: 0 } : u
-      )
-      const user = users.find((u) => u.id === state.activeUserId)
-      return { ...state, users, dayCount: state.dayCount + 1, mapDrops: makeDrops(user, 6) }
+    case 'TOGGLE_POT_SLOT': {
+      // Track pot by backpack SLOT INDEX so duplicate ingredients both count.
+      const has = state.potSelection.includes(action.index)
+      const potSelection = has
+        ? state.potSelection.filter((i) => i !== action.index)
+        : [...state.potSelection, action.index]
+      return { ...state, potSelection }
     }
 
-    case 'TOGGLE_SYNTH_ITEM': {
-      const has = state.synthSelection.includes(action.ingredientId)
-      const synthSelection = has
-        ? state.synthSelection.filter((id) => id !== action.ingredientId)
-        : [...state.synthSelection, action.ingredientId]
-      return { ...state, synthSelection }
+    case 'MAKE': {
+      // Produce the cooked candidates (ranking still runs under the hood) and
+      // move to the Cooked Cuisines screen. Ingredients are consumed on PICK.
+      return { ...state, cooked: action.cooked, screen: 'cooked' }
     }
 
-    case 'CLEAR_SYNTH':
-      return { ...state, synthSelection: [] }
+    case 'TRY_ANOTHER_BATCH':
+      return { ...state, screen: 'kitchen', cooked: [] }
 
-    case 'SYNTHESIZE': {
-      // Consume the committed ingredients; build a coupon from the chosen dish.
-      const tier = getDiscountForCount(state.synthSelection.length)
-      const users = state.users.map((u) => {
-        if (u.id !== state.activeUserId) return u
-        const backpack = [...u.backpack]
-        for (const id of state.synthSelection) {
-          const i = backpack.indexOf(id)
-          if (i >= 0) backpack.splice(i, 1)
-        }
+    case 'PICK_DISH': {
+      // Consume the committed slots; build the coupon from the chosen dish.
+      const tier = getDiscountForCount(state.potSelection.length)
+      const chosen = new Set(state.potSelection)
+      const users = state.users.map((u, i) => {
+        if (i !== 0) return u
+        const backpack = u.backpack.filter((_, k) => !chosen.has(k))
         return { ...u, backpack }
       })
       return {
         ...state,
         users,
-        coupon: { dish: action.dish, restaurant: action.restaurant, tier, ingredientsUsed: state.synthSelection.length },
-        synthSelection: [],
+        coupon: { dish: action.dish, restaurant: action.restaurant, tier, ingredientsUsed: state.potSelection.length },
+        potSelection: [],
+        cooked: [],
         screen: 'coupon',
       }
     }
 
-    case 'RESET_COUPON':
-      return { ...state, coupon: null, screen: 'map' }
+    case 'GO_RESTAURANT':
+      return { ...state, screen: 'restaurant' }
 
-    case 'TOGGLE_WEIGHTS':
-      return { ...state, showWeights: !state.showWeights }
+    case 'RESET_TO_MAP':
+      return { ...state, coupon: null, screen: 'map' }
 
     case 'RESET':
       return initState()
@@ -204,7 +178,7 @@ export function GameProvider({ children }) {
       dispatch,
       user,
       capacity: capacityFor(user),
-      canCollectToday: canCollectToday(user),
+      totalSlots: totalSlotsFor(user),
       config,
     }
   }, [state])

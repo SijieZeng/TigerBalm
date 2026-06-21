@@ -1,41 +1,49 @@
 /**
- * Stylized cartoon city map — pure SVG, zero network. Roads, blocks, a park and
- * a river give the map a recognizable "you are here" feel without Mapbox/keys.
+ * Stylized Amsterdam-Zuid map — pure SVG, zero network. Light base, soft green
+ * blocks, light-blue canals and thin white roads, echoing the design mockup.
  */
 export default function MapBackground() {
   return (
-    <svg className="absolute inset-0 h-full w-full" viewBox="0 0 100 100" preserveAspectRatio="xMidYMid slice">
-      {/* base land */}
-      <rect width="100" height="100" fill="#e8f0e6" />
+    <svg className="absolute inset-0 h-full w-full" viewBox="0 0 100 140" preserveAspectRatio="xMidYMid slice">
+      {/* base */}
+      <rect width="100" height="140" fill="#eef1f4" />
 
-      {/* park */}
-      <rect x="6" y="55" width="30" height="28" rx="3" fill="#cfe6c0" />
-      <circle cx="14" cy="63" r="2.4" fill="#a9d18e" />
-      <circle cx="22" cy="70" r="3" fill="#a9d18e" />
-      <circle cx="30" cy="62" r="2" fill="#a9d18e" />
-
-      {/* river */}
-      <path d="M0 18 Q 30 28 50 16 T 100 24 L 100 32 Q 70 26 50 36 T 0 28 Z" fill="#bcd6ef" />
-
-      {/* roads (light gray) */}
-      <g stroke="#ffffff" strokeWidth="3.2">
-        <line x1="0" y1="44" x2="100" y2="44" />
-        <line x1="0" y1="74" x2="100" y2="74" />
-        <line x1="46" y1="0" x2="46" y2="100" />
-        <line x1="78" y1="30" x2="78" y2="100" />
-      </g>
-      <g stroke="#f4c542" strokeWidth="0.5" strokeDasharray="2 2">
-        <line x1="0" y1="44" x2="100" y2="44" />
-        <line x1="46" y1="0" x2="46" y2="100" />
+      {/* green blocks */}
+      <g fill="#d8e8cf">
+        <rect x="2" y="20" width="22" height="18" rx="2" />
+        <rect x="62" y="14" width="34" height="16" rx="2" />
+        <rect x="6" y="92" width="30" height="22" rx="2" />
+        <rect x="70" y="96" width="26" height="26" rx="2" />
+        <rect x="40" y="118" width="26" height="20" rx="2" />
       </g>
 
-      {/* building blocks */}
-      <g fill="#dfe3ea">
-        <rect x="52" y="48" width="20" height="20" rx="1.5" />
-        <rect x="84" y="48" width="12" height="20" rx="1.5" />
-        <rect x="52" y="80" width="20" height="16" rx="1.5" />
-        <rect x="6" y="6" width="30" height="8" rx="1.5" />
+      {/* canals (light blue) */}
+      <g stroke="#bcd6ef" strokeWidth="2.6" fill="none" opacity="0.9">
+        <path d="M-2 40 Q 30 46 55 40 T 102 44" />
+        <path d="M-2 108 Q 24 100 52 106 T 102 100" />
+        <line x1="14" y1="0" x2="20" y2="140" />
+        <line x1="88" y1="0" x2="82" y2="140" />
       </g>
+
+      {/* big diagonal rail/road band through the middle */}
+      <g stroke="#cfd6e0" strokeWidth="2.4">
+        <line x1="-2" y1="70" x2="102" y2="64" />
+        <line x1="-2" y1="74" x2="102" y2="68" />
+      </g>
+
+      {/* white roads */}
+      <g stroke="#ffffff" strokeWidth="2.2">
+        <line x1="0" y1="56" x2="100" y2="52" />
+        <line x1="0" y1="88" x2="100" y2="86" />
+        <line x1="34" y1="0" x2="38" y2="140" />
+        <line x1="64" y1="0" x2="62" y2="140" />
+      </g>
+
+      {/* label */}
+      <text x="50" y="34" textAnchor="middle" fontSize="4.4" fontWeight="700" fill="#9aa5b1" letterSpacing="0.5">
+        AMSTERDAM ZUID
+      </text>
+      <text x="44" y="44" textAnchor="middle" fontSize="2.6" fill="#9db8d6" fontStyle="italic">Amstelkanaal</text>
     </svg>
   )
 }

@@ -131,12 +131,14 @@ export function getDiscountForCount(count) {
 }
 
 /* ---------------------------------------------------------------------------
- * Backpack helpers
+ * Kitchen helpers
  * ------------------------------------------------------------------------- */
+// Usable slots. Standard users get `base`; Uber One unlocks `plus`.
 export function capacityFor(user) {
-  return user.isMember ? config.capacity.member : config.capacity.normal
+  return user.isMember ? config.capacity.plus : config.capacity.base
 }
 
-export function canCollectToday(user) {
-  return user.dailyCollected < config.dailyCollectLimit
+// Total slots rendered = usable + locked "Plus Unlock" slots (standard only).
+export function totalSlotsFor(user) {
+  return user.isMember ? config.capacity.plus : config.capacity.base + config.lockedSlots
 }

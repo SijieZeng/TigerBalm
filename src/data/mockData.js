@@ -1,26 +1,21 @@
 /**
  * ============================================================================
- * Uber Eats Oracle — Mock Data
+ * Uber Eats Oracle — Mock Data  (aligned to the UI design mockups)
  * ============================================================================
  *
- * TWO TOP-LEVEL BLOCKS, fully decoupled (no weighted merge):
+ * BLOCK A — THE WORLD (Uber Eats database), 3 normalized datasets joined
+ *   many-to-many by id:   ingredients <-> dishes <-> restaurants
  *
- *   BLOCK A — THE WORLD (Uber Eats database)
- *     3 normalized datasets joined many-to-many by id:
- *       ingredients  <—many:many—  dishes  <—many:many—  restaurants
+ * BLOCK B — THE USER (single returning user). Two DECOUPLED preference tracks:
+ *   (1) cuisine track  = orderHistory + favorites -> ranks cooked candidates
+ *   (2) ingredient track = collected / discarded   -> weights map drops
+ *   (Both run under the hood; neither is surfaced in the UI anymore.)
  *
- *   BLOCK B — THE USERS
- *     Each user carries TWO independent preference tracks:
- *       (1) cuisine track  = orderHistory + favorites
- *             -> ONLY ranks the 3 candidate dishes at synthesis time.
- *       (2) ingredient track = collected / discarded history
- *             -> ONLY weights which ingredients drop on the map.
- *       The two tracks never touch each other.
+ * CONFIG — game rules (capacity, discount-by-count tiers).
  *
- *   CONFIG — game rules (daily cap, capacity, discount tiers)
- *
- * All relationships use id references so the data scales: add an ingredient,
- * a dish, a restaurant, or a user without rewriting anything else.
+ * Image convention: every food carries an `image` path under /public/images/.
+ * If the file is missing, <FoodImage> falls back to the `emoji`. Drop real
+ * photos in later and they swap in automatically — no code change.
  * ============================================================================
  */
 
@@ -28,85 +23,91 @@
  * BLOCK A — THE WORLD
  * ======================================================================== */
 
-// --- Dataset 1: ingredients -------------------------------------------------
-// Atomic collectibles that drop on the map. `rarity` is a base drop modifier
-// (1 = common, 3 = rare); the per-user ingredient track multiplies on top.
+// --- Dataset 1: ingredients (the 8 from the ingredient art sheet) -----------
 export const ingredients = [
-  { id: 'tomato',     name: 'Tomato',         emoji: '🍅', rarity: 1 },
-  { id: 'basil',      name: 'Basil',          emoji: '🌿', rarity: 1 },
-  { id: 'mozzarella', name: 'Buffalo Mozz',   emoji: '🧀', rarity: 2 },
-  { id: 'dough',      name: 'Pizza Dough',    emoji: '🫓', rarity: 1 },
-  { id: 'garlic',     name: 'Garlic',         emoji: '🧄', rarity: 1 },
-  { id: 'oliveoil',   name: 'Olive Oil',      emoji: '🫒', rarity: 2 },
-  { id: 'chili',      name: 'Chili',          emoji: '🌶️', rarity: 2 },
-  { id: 'shrimp',     name: 'Shrimp',         emoji: '🦐', rarity: 3, allergen: 'seafood' },
+  { id: 'tomato',     name: 'Tomato',         emoji: '🍅', image: '/images/ingredients/tomato.png',     rarity: 1, blurb: 'Bright, juicy, comfort-friendly', tags: ['Pizza', 'Pasta', 'Soup'] },
+  { id: 'basil',      name: 'Basil',          emoji: '🌿', image: '/images/ingredients/basil.png',      rarity: 1, blurb: 'Fragrant, fresh, herby',          tags: ['Pizza', 'Pasta', 'Salads'] },
+  { id: 'mozzarella', name: 'Buffalo Mozz',   emoji: '🧀', image: '/images/ingredients/mozzarella.png', rarity: 2, blurb: 'Creamy, melty, crowd-pleasing',    tags: ['Pizza', 'Salads'] },
+  { id: 'dough',      name: 'Pizza Dough',    emoji: '🫓', image: '/images/ingredients/dough.png',      rarity: 1, blurb: 'Soft, chewy, the foundation',      tags: ['Pizza', 'Pasta'] },
+  { id: 'garlic',     name: 'Garlic',         emoji: '🧄', image: '/images/ingredients/garlic.png',     rarity: 1, blurb: 'Pungent, savory, aromatic',        tags: ['Pasta', 'Soup'] },
+  { id: 'oliveoil',   name: 'Olive Oil',      emoji: '🫒', image: '/images/ingredients/oliveoil.png',   rarity: 2, blurb: 'Smooth, golden, finishing touch',   tags: ['Pasta', 'Salads'] },
+  { id: 'chili',      name: 'Chili',          emoji: '🌶️', image: '/images/ingredients/chili.png',      rarity: 2, blurb: 'Spicy, bold, warming',             tags: ['Pasta'] },
+  { id: 'shrimp',     name: 'Shrimp',         emoji: '🦐', image: '/images/ingredients/shrimp.png',     rarity: 3, blurb: 'Sweet, tender, a little luxe',       tags: ['Pasta'], allergen: 'seafood' },
 ]
 
 // --- Dataset 2: dishes (the "cuisine" records) -----------------------------
-// Each dish has 3 tags: name, cuisineType (菜系), and up to 5 main ingredients.
-// One ingredient appears in many dishes ("一料多用"); one dish lives in many
-// restaurants (see restaurants below).
+// Each dish: name, cuisineType (菜系), main ingredients, a marketing blurb and
+// a "label" used on the Cooked Cuisines cards (Best deal / Strong match / ...).
 export const dishes = [
-  {
-    id: 'margherita',
-    name: 'Margherita Pizza',
-    cuisineType: 'Italian',
-    ingredientIds: ['tomato', 'basil', 'mozzarella', 'dough', 'oliveoil'],
-  },
-  {
-    id: 'pasta_pomodoro',
-    name: 'Pasta Pomodoro',
-    cuisineType: 'Italian',
-    ingredientIds: ['tomato', 'basil', 'garlic', 'oliveoil', 'dough'],
-  },
-  {
-    id: 'tomato_soup',
-    name: 'Tomato Soup',
-    cuisineType: 'Italian',
-    ingredientIds: ['tomato', 'garlic', 'basil', 'oliveoil'],
-  },
-  {
-    id: 'aglio_e_olio',
-    name: 'Aglio e Olio',
-    cuisineType: 'Italian',
-    ingredientIds: ['dough', 'garlic', 'oliveoil', 'chili'],
-  },
-  {
-    id: 'caprese',
-    name: 'Caprese Salad',
-    cuisineType: 'Italian',
-    ingredientIds: ['tomato', 'mozzarella', 'basil', 'oliveoil'],
-  },
-  {
-    // Exists in the world but should be FILTERED OUT for seafood-allergic users.
-    id: 'shrimp_aglio',
-    name: 'Shrimp Aglio Pasta',
-    cuisineType: 'Italian',
-    ingredientIds: ['dough', 'shrimp', 'garlic', 'chili', 'oliveoil'],
-  },
+  { id: 'margherita',     name: 'Margherita Pizza', cuisineType: 'Italian', ingredientIds: ['tomato', 'basil', 'mozzarella', 'dough'],            image: '/images/dishes/margherita.jpg',    blurb: 'A timeless classic, baked golden with fresh basil.' },
+  { id: 'pasta_pomodoro', name: 'Pasta Pomodoro',   cuisineType: 'Italian', ingredientIds: ['tomato', 'basil', 'garlic', 'oliveoil', 'dough'],    image: '/images/dishes/pasta_pomodoro.jpg', blurb: 'Comforting, rich, and closely matched to your ingredients.' },
+  { id: 'caprese',        name: 'Caprese Salad',    cuisineType: 'Italian', ingredientIds: ['tomato', 'mozzarella', 'basil', 'oliveoil'],         image: '/images/dishes/caprese.jpg',       blurb: 'Fresh, quick, and ideal for a light bite.' },
+  { id: 'tomato_soup',    name: 'Tomato Soup',      cuisineType: 'Italian', ingredientIds: ['tomato', 'garlic', 'basil', 'oliveoil'],             image: '/images/dishes/tomato_soup.jpg',   blurb: 'Warm, cozy, and made for slow evenings.' },
+  { id: 'aglio_olio',     name: 'Aglio e Olio',     cuisineType: 'Italian', ingredientIds: ['dough', 'garlic', 'oliveoil', 'chili'],              image: '/images/dishes/aglio_olio.jpg',    blurb: 'Garlicky, glossy, with a gentle kick of chili.' },
+  { id: 'shrimp_pasta',   name: 'Shrimp Aglio Pasta', cuisineType: 'Italian', ingredientIds: ['dough', 'shrimp', 'garlic', 'chili', 'oliveoil'],  image: '/images/dishes/shrimp_pasta.jpg',  blurb: 'Succulent shrimp tossed in a spicy garlic oil.' },
 ]
 
-// --- Dataset 3: restaurants -------------------------------------------------
-// Each restaurant has a name + cuisineType and serves a set of dishes.
-// Same dish can be served by multiple restaurants (many-to-many via dishIds).
+// --- Dataset 3: restaurants (with a small menu for the restaurant screen) ---
 export const restaurants = [
   {
     id: 'tonys',
-    name: "Tony's Pizzeria",
+    name: "Domino's",
     cuisineType: 'Italian',
+    logo: '🍕',
+    logoImg: '/images/restaurants/tonys.jpg',
+    rating: 4.5,
+    ratingCount: '2,000+',
+    distanceKm: 3.2,
+    address: 'Overtoom 71, 1054 HG Amsterdam',
+    deliveryFee: 1.99,
+    deliveryEta: '20–35 min',
+    pickupEta: '10 min',
     dishIds: ['margherita', 'pasta_pomodoro', 'caprese'],
+    menu: [
+      { id: 'm_margherita', name: 'Margherita Pizza', desc: 'Classic delight with tomato sauce, mozzarella and fresh basil.', price: 14.99, image: '/images/dishes/margherita.jpg' },
+      { id: 'm_pepperoni',  name: 'Pepperoni Passion', desc: 'Loaded with pepperoni and 100% mozzarella cheese.', price: 14.99, image: '/images/dishes/pepperoni.jpg' },
+      { id: 'm_breadsticks', name: 'Cheesy Breadsticks', desc: 'Oven-baked breadsticks with garlic and melted cheese.', price: 6.49, image: '/images/dishes/breadsticks.jpg' },
+    ],
   },
   {
     id: 'bella',
-    name: 'Bella Cucina',
+    name: 'Spaghetteria',
     cuisineType: 'Italian',
-    dishIds: ['pasta_pomodoro', 'aglio_e_olio', 'tomato_soup', 'shrimp_aglio'],
+    logo: '🍝',
+    logoImg: '/images/restaurants/bella.jpg',
+    rating: 4.6,
+    ratingCount: '1,500+',
+    distanceKm: 0.8,
+    address: 'Ceintuurbaan 124, 1072 GA Amsterdam',
+    deliveryFee: 0.99,
+    deliveryEta: '20–30 min',
+    pickupEta: '12 min',
+    dishIds: ['pasta_pomodoro', 'aglio_olio', 'tomato_soup', 'shrimp_pasta'],
+    menu: [
+      { id: 'b_pasta', name: 'Pasta Pomodoro', desc: 'Rich tomato sauce with basil, garlic and olive oil.', price: 12.99, image: '/images/dishes/pasta_pomodoro.jpg' },
+      { id: 'b_aglio', name: 'Aglio e Olio', desc: 'Garlic, olive oil and chili over fresh pasta.', price: 11.49, image: '/images/dishes/aglio_olio.jpg' },
+      { id: 'b_soup', name: 'Tomato Soup', desc: 'Slow-simmered tomato soup with a basil swirl.', price: 7.49, image: '/images/dishes/tomato_soup.jpg' },
+    ],
   },
   {
-    id: 'nonna',
-    name: "Nonna's Kitchen",
+    id: 'green_bowl',
+    name: 'Dolce Verona',
     cuisineType: 'Italian',
+    logo: '🍅',
+    logoImg: '/images/restaurants/green_bowl.jpg',
+    rating: 4.4,
+    ratingCount: '900+',
+    distanceKm: 1.4,
+    address: 'Kinkerstraat 45, 1053 DE Amsterdam',
+    deliveryFee: 1.49,
+    deliveryEta: '25–35 min',
+    pickupEta: '15 min',
     dishIds: ['margherita', 'tomato_soup', 'caprese'],
+    menu: [
+      { id: 'g_marg', name: 'Margherita Pizza', desc: 'Tomato, mozzarella and basil, wood-fired.', price: 13.49, image: '/images/dishes/margherita.jpg' },
+      { id: 'g_caprese', name: 'Caprese Salad', desc: 'Tomato, mozzarella and basil with olive oil.', price: 8.99, image: '/images/dishes/caprese.jpg' },
+      { id: 'g_soup', name: 'Tomato Soup', desc: 'Light tomato soup with garden herbs.', price: 6.99, image: '/images/dishes/tomato_soup.jpg' },
+    ],
   },
 ]
 
@@ -115,123 +116,59 @@ export const restaurants = [
  * ======================================================================== */
 
 export const config = {
-  // Net backpack additions per day = 1 (discard/replace to make room).
-  dailyCollectLimit: 1,
-
-  // Backpack capacity by membership.
+  // Collecting is unlimited per day; the KITCHEN cap is the real constraint.
+  // A full kitchen forces a replace (discard = a personalization signal).
   capacity: {
-    normal: 3,
-    member: 5, // Uber One
+    base: 3,        // usable slots for everyone
+    plus: 5,        // Uber One members unlock 2 more (shown locked in the UI)
   },
+  lockedSlots: 2,   // how many "Plus Unlock" slots to render after the base ones
 
-  // Smart discount is decided by HOW MANY ingredients the user commits to a
-  // synthesis — NOT by recipe completeness. Because only 1 ingredient enters
-  // the backpack per day, committing more = a multi-day (and member-gated)
-  // investment, which keeps big rewards sustainable for restaurants.
-  // Counts between thresholds round DOWN to the nearest tier.
+  // Smart discount = how many ingredients the user commits to a cook.
+  // Rounds DOWN to the nearest tier.
   discountTiers: [
-    {
-      ingredientsUsed: 1,
-      reward: { type: 'dish_percent', value: 50, scope: 'dish' },
-      label: '50% off this dish',
-      note: 'Same-day reward — low-friction hook.',
-    },
-    {
-      ingredientsUsed: 3,
-      reward: { type: 'dish_free', value: 100, scope: 'dish' },
-      label: 'This dish is FREE',
-      note: 'Restaurant still collects the delivery/min fee — pure traffic driver.',
-    },
-    {
-      ingredientsUsed: 5,
-      reward: { type: 'order_percent', value: 20, scope: 'order' },
-      label: '20% off your whole order',
-      note: 'Member-only (capacity 5) — a 5-day investment.',
-    },
+    { ingredientsUsed: 1, reward: { type: 'dish_percent', value: 50, scope: 'dish' },  label: '50% off this dish',     note: 'Same-day reward — a low-friction hook.' },
+    { ingredientsUsed: 3, reward: { type: 'dish_free',    value: 100, scope: 'dish' },  label: 'This dish is FREE',     note: 'Restaurant still keeps the delivery fee — pure traffic driver.' },
+    { ingredientsUsed: 5, reward: { type: 'order_percent', value: 20, scope: 'order' }, label: '20% off your order',    note: 'Uber One only (5 slots) — a 5-day investment.' },
   ],
 }
 
 /* ===========================================================================
- * BLOCK B — THE USERS
+ * BLOCK B — THE USER (single returning user)
  * ======================================================================== */
 
-// Empty preference shape, reused for clarity.
-const emptyCuisineTrack = { orderHistory: [], favorites: { restaurantIds: [], dishIds: [], cuisineTypes: [] } }
-const emptyIngredientTrack = { collected: {}, discarded: {} }
-
 export const users = [
-  /* --------------------------------------------------------------------- *
-   * NEW USER — cold start.
-   * Both tracks empty => map drops are (rarity-only) random, and candidate
-   * dishes have no preference signal to rank by (fall back to flat order).
-   * --------------------------------------------------------------------- */
-  {
-    id: 'new',
-    name: 'Sam',
-    isMember: false,
-    allergens: [],
-
-    // TRACK 1 (cuisine): orders + favorites -> synthesis ranking only
-    ...structuredCloneSafe(emptyCuisineTrack),
-
-    // TRACK 2 (ingredient): collected/discarded -> map drop weights only
-    ingredientTrack: structuredCloneSafe(emptyIngredientTrack),
-
-    // Runtime game state
-    backpack: [],          // array of ingredient ids currently held
-    dailyCollected: 0,     // resets each day, capped at config.dailyCollectLimit
-  },
-
-  /* --------------------------------------------------------------------- *
-   * RETURNING USER — rich profile.
-   * - cuisine track: loves Italian, frequents Tony's & Nonna's.
-   * - ingredient track: repeatedly collects tomato/basil/mozz,
-   *     repeatedly discards shrimp/chili (negative signal).
-   * - seafood allergy: shrimp dishes must be filtered at candidate-gen.
-   * - Uber One member: backpack capacity 5 -> can reach the 20%-off tier.
-   * --------------------------------------------------------------------- */
   {
     id: 'returning',
     name: 'Ava',
-    isMember: true,
-    allergens: ['seafood'],
+    isMember: false, // standard -> 2 kitchen slots are locked ("Plus Unlock")
+    allergens: [],
 
-    // TRACK 1 (cuisine)
+    // TRACK 1 (cuisine) -> ranks cooked candidates
     orderHistory: [
       { dishId: 'margherita',     restaurantId: 'tonys', count: 6 },
-      { dishId: 'caprese',        restaurantId: 'tonys', count: 3 },
+      { dishId: 'caprese',        restaurantId: 'green_bowl', count: 3 },
       { dishId: 'pasta_pomodoro', restaurantId: 'bella', count: 2 },
     ],
     favorites: {
-      restaurantIds: ['tonys', 'nonna'],
+      restaurantIds: ['tonys', 'green_bowl'],
       dishIds: ['margherita', 'caprese'],
       cuisineTypes: ['Italian'],
     },
 
-    // TRACK 2 (ingredient)
+    // TRACK 2 (ingredient) -> weights map drops
     ingredientTrack: {
-      collected: { tomato: 5, basil: 4, mozzarella: 3, dough: 2, oliveoil: 2 },
+      collected: { tomato: 5, mozzarella: 4, basil: 3, dough: 2 },
       discarded: { shrimp: 3, chili: 2 },
     },
 
-    // Runtime game state — pre-seeded so the demo can synthesize immediately.
-    backpack: ['tomato', 'basil', 'mozzarella'],
-    dailyCollected: 0,
+    // Runtime game state — start empty so the demo plays from a clean map.
+    backpack: [],
   },
 ]
 
 /* ===========================================================================
- * Tiny helper kept local so this file has no imports.
- * (structuredClone exists in modern runtimes; guard just in case.)
- * ======================================================================== */
-function structuredCloneSafe(obj) {
-  return typeof structuredClone === 'function'
-    ? structuredClone(obj)
-    : JSON.parse(JSON.stringify(obj))
-}
-
-/* ===========================================================================
- * Convenience lookups (by id) — handy in components.
+ * Convenience lookups (by id)
  * ======================================================================== */
 export const ingredientById = Object.fromEntries(ingredients.map((i) => [i.id, i]))
 export const dishById = Object.fromEntries(dishes.map((d) => [d.id, d]))
