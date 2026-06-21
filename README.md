@@ -63,3 +63,5 @@ React · Vite · Tailwind CSS · Framer Motion · 100% mock data (no backend)
 ## 👩‍💻 Contributors
 
 * **iamwangshuang** - Co-developer
+* **Sijie Zeng** - Co-developer 
+
